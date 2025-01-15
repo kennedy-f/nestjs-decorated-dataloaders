@@ -41,4 +41,25 @@ export class ExplorerService {
 			provider: provider,
 		};
 	}
+
+	findInverseMetadataHandlerByName(inverseHandlerName: string) {
+		const provider = LazyMetadataContainer.dataloaderHandlers.get(inverseHandlerName);
+
+		if (!provider) {
+			throw new Error(`cannot find provider: ${inverseHandlerName}`);
+		}
+
+		const resolvedProvider = LazyMetadataContainer.loadedAliases.get(provider.provide);
+
+		const repository = this.moduleRef.get(resolvedProvider || provider.provide, { strict: false });
+
+		if (!repository) {
+			throw new Error(`cannot find provider: ${provider.provide.name}`);
+		}
+
+		return {
+			repository: repository,
+			provider: provider,
+		};
+	}
 }
