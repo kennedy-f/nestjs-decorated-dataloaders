@@ -23,6 +23,7 @@ describe("DataloaderService", () => {
 					provide: ExplorerService,
 					useValue: {
 						findMetadataHandlerByName: vi.fn(),
+						findInverseMetadataHandlerByName: vi.fn(),
 					},
 				},
 			],
@@ -872,6 +873,98 @@ describe("DataloaderService", () => {
 				expect(order.customerId).toBe(customer.id);
 				expect(order).toBeInstanceOf(Order);
 			}
+		}
+	});
+
+	it("should load inverse relationships", async () => {
+		const handlerName = "LOAD_PHOTOS_BY_USER_ID";
+		const inverseHandlerName = "LOAD_USERS_BY_PHOTO_ID";
+
+		class Photo {
+			@FactoryField((faker) => faker.number.int({ max: 99999 }))
+			id: number;
+
+			@FactoryField((faker) => faker.image.url())
+			url: string;
+
+			@FactoryField((faker) => faker.number.int({ max: 99999 }))
+			userId: number;
+
+			@Load(() => User, {
+				key: "userId",
+				parentKey: "id",
+				handler: inverseHandlerName,
+			})
+			user: User;
+		}
+
+		class User {
+			@FactoryField((faker) => faker.number.int({ max: 99999 }))
+			id: number;
+
+			@FactoryField((faker) => faker.person.fullName())
+			name: string;
+
+			@Load(() => [Photo], {
+				key: "id",
+				parentKey: "userId",
+				handler: handlerName,
+				inverseHandler: inverseHandlerName,
+			})
+			photos: Photo[];
+		}
+
+		class PhotoRepository {
+			@DataloaderHandler(handlerName)
+			static async loadByUserIds(userIds: number[]) {
+				return userIds.flatMap((userId) => {
+					return factory.createList(Photo, 3).override((photos) => {
+						for (const photo of photos) {
+							photo.userId = userId;
+						}
+						return photos;
+					});
+				});
+			}
+		}
+
+		class UserRepository {
+			@DataloaderHandler(inverseHandlerName)
+			static async loadByPhotoIds(photoIds: number[]) {
+				return photoIds.map((photoId) => factory.create(User).override(() => ({ id: photoId })));
+			}
+		}
+
+		vi.spyOn(explorerService, "findMetadataHandlerByName").mockImplementation((name) => {
+			if (name === handlerName) {
+				return {
+					repository: PhotoRepository,
+					provider: {
+						provide: PhotoRepository,
+						field: "loadByUserIds",
+					},
+				};
+			} else if (name === inverseHandlerName) {
+				return {
+					repository: UserRepository,
+					provider: {
+						provide: UserRepository,
+						field: "loadByPhotoIds",
+					},
+				};
+			}
+		});
+
+		LazyMetadataContainer.loadRelationshipMetadata();
+
+		const photos = factory.newList(Photo, 3);
+		const results = await Promise.all(
+			photos.map((photo) => dataloaderService.load({ from: Photo, field: "user", data: photo })),
+		);
+
+		expect(results).toHaveLength(3);
+		for (const [index, user] of results.entries()) {
+			expect(user.id).toBe(photos[index].userId);
 		}
 	});
 

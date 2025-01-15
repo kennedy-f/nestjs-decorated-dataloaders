@@ -47,6 +47,7 @@ export class LazyMetadataContainer {
 				key: unloadedRelationship.key,
 				parentKey: unloadedRelationship.parentKey,
 				handler: unloadedRelationship.handler,
+				inverseHandler: unloadedRelationship.inverseHandler,
 				type: isArray ? RelationType.OneToMany : RelationType.OneToOne,
 			};
 

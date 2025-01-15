@@ -389,4 +389,34 @@ describe("Load Decorator", () => {
 			child: TeamMember,
 		});
 	});
+
+	it("should add valid inverseHandler relationship metadata to LazyMetadataContainer", () => {
+		class Photo {
+			id: number;
+			userId: number;
+		}
+
+		class User {
+			id: number;
+
+			@Load(() => Photo, { key: "id", parentKey: "userId", handler: "LOAD_PHOTOS_BY_USER_IDS", inverseHandler: "LOAD_USERS_BY_PHOTO_IDS" })
+			photo: Photo;
+		}
+
+		LazyMetadataContainer.loadRelationshipMetadata();
+
+		const userRelations = LazyMetadataContainer.loadedRelationships.get(User);
+		expect(userRelations).toBeDefined();
+
+		const photoMetadata = userRelations?.get("photo");
+		expect(photoMetadata).toMatchObject({
+			key: "id",
+			parentKey: "userId",
+			handler: "LOAD_PHOTOS_BY_USER_IDS",
+			inverseHandler: "LOAD_USERS_BY_PHOTO_IDS",
+			type: RelationType.OneToOne,
+			parent: User,
+			child: Photo,
+		});
+	});
 });

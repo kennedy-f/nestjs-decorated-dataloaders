@@ -463,4 +463,41 @@ describe("LazyMetadataContainer", () => {
 			expect(e.message).toBe("Dataloader handler with key findById already exists");
 		}
 	});
+
+	it("should add and load relationship metadata with inverseHandler", () => {
+		class Photo {
+			id: number;
+			userId: number;
+		}
+
+		class User {
+			id: number;
+		}
+
+		const relationship: Relationship = {
+			parentFN: () => User,
+			explicitChildFN: () => Photo,
+			key: "id",
+			parentKey: "userId",
+			handler: "findPhotosByUserId",
+			inverseHandler: "findUsersByPhotoId",
+			originalFieldName: "photos",
+		};
+
+		LazyMetadataContainer.addRelationshipMetadata(relationship);
+		LazyMetadataContainer.loadRelationshipMetadata();
+
+		const loadedRelationships = LazyMetadataContainer.loadedRelationships;
+		const userRelations = loadedRelationships.get(User);
+		const photoRelation = userRelations?.get("photos");
+
+		expect(photoRelation).toBeDefined();
+		expect(photoRelation?.type).toBe(RelationType.OneToOne);
+		expect(photoRelation?.parent).toBe(User);
+		expect(photoRelation?.child).toBe(Photo);
+		expect(photoRelation?.key).toBe("id");
+		expect(photoRelation?.parentKey).toBe("userId");
+		expect(photoRelation?.handler).toBe("findPhotosByUserId");
+		expect(photoRelation?.inverseHandler).toBe("findUsersByPhotoId");
+	});
 });

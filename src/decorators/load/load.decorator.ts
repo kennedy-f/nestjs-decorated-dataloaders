@@ -7,10 +7,11 @@ interface LoadOptions<Child, Parent> {
 	key: Paths<Parent>;
 	parentKey: Paths<Child>;
 	handler: string;
+	inverseHandler?: string;
 }
 
 export function Load<Child, Parent = any>(child: ChildFN<Child>, options: LoadOptions<Child, Parent>) {
-	const { key, parentKey, handler } = options;
+	const { key, parentKey, handler, inverseHandler } = options;
 	return (target: NonNullable<any>, propertyKey: string) => {
 		const parent = () => target.constructor as Type;
 
@@ -18,6 +19,7 @@ export function Load<Child, Parent = any>(child: ChildFN<Child>, options: LoadOp
 			key: key as string,
 			parentKey: parentKey as string,
 			handler: handler,
+			inverseHandler: inverseHandler,
 			parentFN: parent,
 			explicitChildFN: child,
 			originalFieldName: propertyKey,
